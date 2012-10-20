@@ -1,0 +1,1 @@
+from leisure import API, Resource
