@@ -10,13 +10,40 @@ class Resource(object):
         self._resource = resource
         self._auth = auth
             
-    def _request(self, method, args=None, data=None):
+    def _prep_query(self, query):
+        """Prepare request query string"""
+        
+        query = {} if not query else query
+        if self._auth:
+            auth_query = self._auth.get_query()
+            if auth_query:
+                query.update(auth_query)
+        return urllib.urlencode(query)
+    
+    def _prep_headers(self, headers):
+        """Prepare request headers"""
+        
+        headers = {} if not headers else headers
+        if self._auth:
+            auth_headers = self._auth.get_headers()
+            if auth_headers:
+                headers.update(auth_headers)
+        return headers
+    
+    def _prep_data(self, data):
+        """Prepare request body"""
+        
+        return data
+            
+    def _request(self, method, query=None, data=None, headers=None):
         assert method in HTTP_METHODS
-        args = {} if not args else args
-        args = self._auth.process_args(args) if self._auth else args
-        request = RequestWithMethod(self._resource + '?' + urllib.urlencode(args),
-                                    data, method=method)
-        request = self._auth.process_request(request) if self._auth else request
+        
+        query = self._prep_query(query)
+        headers = self._prep_headers(headers)
+        data = self._prep_data(data)
+        
+        request = RequestWithMethod(self._resource + '?' + query, data, 
+                                    headers, method=method)
         try:
             pagehandle = urllib2.urlopen(request)
         except urllib2.HTTPError, e:
@@ -58,9 +85,6 @@ class API(object):
         self._auth = auth
         # If uri ends with '/' then add trailing '/'to all resources
         self._trail = '/' if uri[-1] == '/' else ''
-        if self._auth:
-            self._auth.init(self)
-        
         
     def __getattr__(self, name):
         try:

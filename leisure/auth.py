@@ -1,23 +1,13 @@
-import urllib2
+import base64
 
 class Auth(object):
-    
-    def init(self, api):
-        """Called after API __init__ method. 
-        API object passes a reference to itself."""
-
-        self._api = api
         
-    def process_args(self, args):
-        """Modify URL arguments before creating request object"""
-        
-        return args
+    def get_query(self):
+        """Return query string to add to request"""
     
-    def process_request(self, request):
-        """Modify urllib2 Request before sending"""
+    def get_headers(self):
+        """Return headers to add to request"""
         
-        return request
-    
     def on_error(self, error):
         """Called on HTTP error 401"""
         
@@ -30,26 +20,30 @@ class BasicAuth(Auth):
         
         self._username = username
         self._password = password
+        self._encoded = None
+        
+    @property
+    def encoded_cred(self):
+        """base64 encode username:password string"""
+        
+        if not self._encoded:
+            self._encoded = base64.b64encode('%s:%s' % (self._username,
+                                                        self._password))
+        return self._encoded
+        
+    def get_headers(self):
+        """Add Basic Authorization header"""
+        
+        return {'Authorization': 'Basic %s' % self.encoded_cred}
     
-    def init(self, api):
-        self._setup(api._uri)
-
-    def _setup(self, uri):        
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        passman.add_password(None, uri, self._username, self._password)
-        authhandler = urllib2.HTTPBasicAuthHandler(passman)
-        opener = urllib2.build_opener(authhandler)
-        urllib2.install_opener(opener)
-
 class APIKeyAuth(Auth):
     
     def __init__(self, **kwargs):
         """Save all keyword arguments"""
 
-        self._args = kwargs
+        self._auth_args = kwargs
         
-    def process_args(self, args):
-        """Add all objects in self._args to request url"""
+    def get_query(self):
+        """Add all auth_args to query string"""
         
-        args.update(self._args)
-        return args
+        return self._auth_args
