@@ -2,14 +2,21 @@ import urllib2
 
 class Auth(object):
     
-    def init(self):
-        """Called after API __init__ method"""
-    
+    def init(self, api):
+        """Called after API __init__ method. 
+        API object passes a reference to itself."""
+
+        self._api = api
+        
     def process_args(self, args):
-        """Modify URL arguments (query string)"""
+        """Modify URL arguments before creating request object"""
+        
+        return args
     
-    def process_data(self, data):
-        """Modify request data"""
+    def process_request(self, request):
+        """Modify urllib2 Request before sending"""
+        
+        return request
     
     def on_error(self, error):
         """Called on HTTP error 401"""
@@ -25,7 +32,7 @@ class BasicAuth(Auth):
         self._password = password
     
     def init(self, api):
-        self._setup(api._resource)
+        self._setup(api._uri)
 
     def _setup(self, uri):        
         passman = urllib2.HTTPPasswordMgrWithDefaultRealm()

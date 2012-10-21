@@ -1,7 +1,7 @@
 import urllib
 import urllib2
 
-from util import RequestWithMethod
+from util import HTTP_METHODS, RequestWithMethod
 
 class Resource(object):
     """Single REST API resource"""
@@ -11,13 +11,12 @@ class Resource(object):
         self._auth = auth
             
     def _request(self, method, args=None, data=None):
-        assert method in ('GET', 'POST', 'PUT', 'DELETE')
+        assert method in HTTP_METHODS
         args = {} if not args else args
-        if self._auth:
-            args = self._auth.process_args(args)
-            data = self._auth.process_data(data)
+        args = self._auth.process_args(args) if self._auth else args
         request = RequestWithMethod(self._resource + '?' + urllib.urlencode(args),
                                     data, method=method)
+        request = self._auth.process_request(request) if self._auth else request
         try:
             pagehandle = urllib2.urlopen(request)
         except urllib2.HTTPError, e:
@@ -57,7 +56,11 @@ class API(object):
     def __init__(self, uri, auth=None):
         self._uri = uri
         self._auth = auth
-        self._trail = '/' if uri[:1] == '/' else ''
+        # If uri ends with '/' then add trailing '/'to all resources
+        self._trail = '/' if uri[-1] == '/' else ''
+        if self._auth:
+            self._auth.init(self)
+        
         
     def __getattr__(self, name):
         try:
